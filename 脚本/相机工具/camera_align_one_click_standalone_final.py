@@ -38,6 +38,7 @@ Camera Align for Maya 2022+ - Standalone Final
 
 import os
 import json
+import base64
 import maya.cmds as mc
 import maya.mel as mel
 import maya.api.OpenMaya as om2
@@ -52,6 +53,22 @@ SHELF_BUTTON_NAME = "CameraAlignShelfButton"
 HOTKEY_SET_NAME = "CameraAlign_HotkeySet"
 HOTKEY_VERSION = "v7"
 HOTKEY_BACKUP_FILE = "camera_align_hotkey_backup_v7.json"
+HOTKEY_CONFIG_FILE = "camera_align_hotkeys.json"
+SHELF_ICON_NAME = "camera_align_face_normal_icon.png"
+SHELF_ICON_BASE64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA7UlEQVR42mPQ0jX4P5CYAUSYWdkNCB51wOB2wOEz5zHwyHDAo5evwRibA2By6AZt2nuI+g7Ah5EthmGaOMDKIwAFg8SQLaWLAwqO3QPjQe+A/+scBzYKaOIAXBhkGQgPuAPQMV2KYlyWY3PEpXefwJiuDgBhmMVa87aCMS5HUOwAfI6CWY7PEVSrDUGGk+MIih2AHtSEHEF1B8AcgWwJKaFAEwegOwJdDtkROB3w9ccvOMYmTowjcFlMMASwWYAuTqojcJUHJDsAV8jgcgRZBRG5IYDsAEIWE0yE2HxKjANgjhjtF4w6gGQHDCQGAGcMIk3w2OV9AAAAAElFTkSuQmCC"
+)
+HOTKEY_FIELD_PREFIX = "CameraAlignHotkeyField_"
+HOTKEY_ALT_PREFIX = "CameraAlignHotkeyAlt_"
+HOTKEY_CTRL_PREFIX = "CameraAlignHotkeyCtrl_"
+HOTKEY_SHIFT_PREFIX = "CameraAlignHotkeyShift_"
+HOTKEY_STATUS_PREFIX = "CameraAlignHotkeyStatus_"
+HOTKEY_ACTIONS = [
+    ("align", "对齐", "Align", "q", "align_camera_to_selected_polygon"),
+    ("rotate_cw", "顺转", "RotateCW", "w", "rotate_aligned_camera_clockwise"),
+    ("rotate_ccw", "逆转", "RotateCCW", "e", "rotate_aligned_camera_counter_clockwise"),
+    ("restore", "恢复", "Restore", "r", "restore_perspective_camera"),
+]
 
 
 class _AlignState(object):
@@ -93,6 +110,33 @@ def _display_warning(message):
 
 def _display_error(message):
     om2.MGlobal.displayError("Camera Align: {0}".format(message))
+
+
+def _user_scripts_dir():
+    path = mc.internalVar(userScriptDir=True)
+    path = os.path.normpath(path)
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    return path
+
+
+def _hotkey_config_path():
+    return os.path.join(_user_scripts_dir(), HOTKEY_CONFIG_FILE)
+
+
+def _user_icons_dir():
+    path = mc.internalVar(userBitmapsDir=True)
+    path = os.path.normpath(path)
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    return path
+
+
+def _write_shelf_icon():
+    path = os.path.join(_user_icons_dir(), SHELF_ICON_NAME)
+    with open(path, "wb") as f:
+        f.write(base64.b64decode(SHELF_ICON_BASE64))
+    return path
 
 
 class Camera_Align(object):
@@ -558,7 +602,13 @@ def close_camera_align_ui():
 
 
 def _hotkey_hud_text():
-    return "Alt+Q 对齐   Alt+W 顺转   Alt+E 逆转   Alt+R 恢复"
+    parts = []
+    config = load_hotkey_config()
+    for action_id, label, unused_command_id, unused_default_key, unused_function_name in HOTKEY_ACTIONS:
+        item = config.get(action_id)
+        if item and item.get("enabled", True):
+            parts.append("{0} {1}".format(_format_hotkey(item), label))
+    return "   ".join(parts) if parts else "未绑定快捷键"
 
 
 def _find_free_hud_slot():
@@ -651,6 +701,13 @@ def create_or_update_shelf_button():
         "camera_align.show_camera_align_ui()\n"
     )
 
+    icon_name = SHELF_ICON_NAME
+    try:
+        _write_shelf_icon()
+    except Exception as exc:
+        icon_name = "commandButton.png"
+        _display_warning("Shelf 图标写入失败，使用默认图标：{0}".format(exc))
+
     mc.shelfButton(
         SHELF_BUTTON_NAME,
         parent=current_shelf,
@@ -658,7 +715,7 @@ def create_or_update_shelf_button():
         annotation="打开 Camera Align 工具窗口",
         command=command,
         sourceType="python",
-        image1="commandButton.png",
+        image1=icon_name,
         imageOverlayLabel="CA",
         style="iconAndTextVertical",
     )
@@ -766,6 +823,32 @@ def _build_camera_align_ui_content(parent):
     _ui_button("隐藏快捷键提示", lambda *a: _safe_call(hide_shortcut_hud, "视窗快捷键提示已隐藏。"), height=32, color="muted")
     mc.setParent(root)
 
+    mc.frameLayout(label="快捷键设置", collapsable=True, collapse=False, marginWidth=10, marginHeight=8, borderVisible=True)
+    mc.columnLayout(adjustableColumn=True, rowSpacing=8)
+    mc.text(label="输入单个按键，勾选修饰键；应用时会跳过被其他命令占用的组合。", align="left", wordWrap=True)
+    hotkey_config = load_hotkey_config()
+    for action_id, label, unused_command_id, unused_default_key, unused_function_name in HOTKEY_ACTIONS:
+        item = hotkey_config[action_id]
+        mc.rowLayout(numberOfColumns=5, adjustableColumn=2, columnWidth5=(58, 64, 54, 54, 54), columnAlign5=("left", "left", "left", "left", "left"))
+        mc.text(label=label)
+        mc.textField(HOTKEY_FIELD_PREFIX + action_id, text=str(item.get("key", "")).upper())
+        mc.checkBox(HOTKEY_CTRL_PREFIX + action_id, label="Ctrl", value=item.get("ctrl", False))
+        mc.checkBox(HOTKEY_ALT_PREFIX + action_id, label="Alt", value=item.get("alt", False))
+        mc.checkBox(HOTKEY_SHIFT_PREFIX + action_id, label="Shift", value=item.get("shift", False))
+        mc.setParent("..")
+        try:
+            mc.text(HOTKEY_STATUS_PREFIX + action_id, label="", align="left", height=22, backgroundColor=_ui_color("status"))
+        except Exception:
+            mc.text(HOTKEY_STATUS_PREFIX + action_id, label="", align="left", height=22)
+
+    mc.rowColumnLayout(numberOfColumns=2, columnWidth=[(1, 188), (2, 188)], columnSpacing=[(1, 6), (2, 6)])
+    _ui_button("检测冲突", lambda *a: detect_hotkey_conflicts_from_ui(), height=32, color="secondary")
+    _ui_button("应用快捷键", lambda *a: apply_hotkeys_from_ui(), height=32, color="success")
+    _ui_button("恢复默认", lambda *a: restore_default_hotkeys_from_ui(), height=32, color="muted")
+    _ui_button("清理本插件快捷键", lambda *a: remove_reserved_hotkeys(), height=32, color="danger")
+    mc.setParent(root)
+    refresh_hotkey_status_ui()
+
     mc.frameLayout(label="工具入口", collapsable=True, collapse=True, marginWidth=10, marginHeight=8, borderVisible=True)
     mc.columnLayout(adjustableColumn=True, rowSpacing=8)
     mc.text(label="Shelf 按钮丢失时，可在这里重新创建。", align="left", wordWrap=True)
@@ -855,6 +938,27 @@ def _clear_hotkey(key, alt=False, ctrl=False, shift=False):
         pass
 
 
+def _clear_camera_align_hotkey(key, alt=False, ctrl=False, shift=False):
+    item = {"key": key, "alt": alt, "ctrl": ctrl, "shift": shift}
+    press_name = _query_hotkey_name(item, release=False)
+    release_name = _query_hotkey_name(item, release=True)
+    base = dict(keyShortcut=key, altModifier=alt, ctrlModifier=ctrl, shiftModifier=shift)
+    if _is_camera_align_command(press_name):
+        try:
+            args = dict(base)
+            args["name"] = ""
+            mc.hotkey(**args)
+        except Exception:
+            pass
+    if _is_camera_align_command(release_name):
+        try:
+            args = dict(base)
+            args["releaseName"] = ""
+            mc.hotkey(**args)
+        except Exception:
+            pass
+
+
 def _name_command(command_id, combo_name, label, mel_command):
     name = "CameraAlign_{0}_{1}_{2}_NameCommand".format(command_id, combo_name, HOTKEY_VERSION)
     try:
@@ -869,23 +973,286 @@ def _bind_hotkey(key, name_command, alt=False, ctrl=False, shift=False):
     mc.hotkey(keyShortcut=key, altModifier=alt, ctrlModifier=ctrl, shiftModifier=shift, name=name_command, pressCommandRepeat=True)
 
 
-def install_hotkeys(show_dialog=True):
-    commands = [
-        ("Align", "q", "对齐到当前选中面", 'python("import camera_align; camera_align.align_camera_to_selected_polygon()");'),
-        ("RotateCW", "w", "顺时针旋转 22.5 度", 'python("import camera_align; camera_align.rotate_aligned_camera_clockwise()");'),
-        ("RotateCCW", "e", "逆时针旋转 22.5 度", 'python("import camera_align; camera_align.rotate_aligned_camera_counter_clockwise()");'),
-        ("Restore", "r", "恢复透视相机", 'python("import camera_align; camera_align.restore_perspective_camera()");'),
-    ]
-    combos = [
-        ("Alt", dict(alt=True, ctrl=False, shift=False)),
-        ("CtrlAlt", dict(alt=True, ctrl=True, shift=False)),
-    ]
+def _default_hotkey_config():
+    config = {}
+    for action_id, unused_label, unused_command_id, default_key, unused_function_name in HOTKEY_ACTIONS:
+        config[action_id] = {
+            "key": default_key,
+            "alt": True,
+            "ctrl": False,
+            "shift": False,
+            "enabled": True,
+        }
+    return config
 
+
+def _normalize_hotkey_item(item, default_item):
+    normalized = dict(default_item)
+    if isinstance(item, dict):
+        normalized.update(item)
+    normalized["key"] = str(normalized.get("key", "")).strip().lower()
+    normalized["alt"] = bool(normalized.get("alt", False))
+    normalized["ctrl"] = bool(normalized.get("ctrl", False))
+    normalized["shift"] = bool(normalized.get("shift", False))
+    normalized["enabled"] = bool(normalized.get("enabled", True))
+    return normalized
+
+
+def load_hotkey_config():
+    defaults = _default_hotkey_config()
+    path = _hotkey_config_path()
+    data = {}
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as exc:
+            _display_warning("快捷键配置读取失败，将使用默认配置：{0}".format(exc))
+            data = {}
+
+    config = {}
+    for action_id in defaults:
+        config[action_id] = _normalize_hotkey_item(data.get(action_id), defaults[action_id])
+    return config
+
+
+def save_hotkey_config(config):
+    defaults = _default_hotkey_config()
+    normalized = {}
+    for action_id in defaults:
+        normalized[action_id] = _normalize_hotkey_item(config.get(action_id), defaults[action_id])
+    with open(_hotkey_config_path(), "w", encoding="utf-8") as f:
+        json.dump(normalized, f, ensure_ascii=False, indent=2, sort_keys=True)
+    return normalized
+
+
+def _format_hotkey(item):
+    parts = []
+    if item.get("ctrl"):
+        parts.append("Ctrl")
+    if item.get("alt"):
+        parts.append("Alt")
+    if item.get("shift"):
+        parts.append("Shift")
+    key = str(item.get("key", "")).strip().upper()
+    if key:
+        parts.append(key)
+    return "+".join(parts) if parts else "未设置"
+
+
+def _hotkey_combo_id(item):
+    return (
+        str(item.get("key", "")).strip().lower(),
+        bool(item.get("ctrl", False)),
+        bool(item.get("alt", False)),
+        bool(item.get("shift", False)),
+    )
+
+
+def _query_hotkey_name(item, release=False):
+    key = str(item.get("key", "")).strip().lower()
+    if not key:
+        return ""
+    args = {
+        "keyShortcut": key,
+        "altModifier": bool(item.get("alt", False)),
+        "ctrlModifier": bool(item.get("ctrl", False)),
+        "shiftModifier": bool(item.get("shift", False)),
+        "q": True,
+    }
+    args["releaseName" if release else "name"] = True
+    try:
+        return mc.hotkey(**args) or ""
+    except Exception:
+        return ""
+
+
+def _is_camera_align_command(name):
+    return bool(name and str(name).startswith("CameraAlign_"))
+
+
+def _hotkey_status(action_id, item):
+    if not item.get("enabled", True):
+        return "未启用", "warn"
+    if not item.get("key"):
+        return "未设置按键", "warn"
+
+    press_name = _query_hotkey_name(item, release=False)
+    release_name = _query_hotkey_name(item, release=True)
+    external = [name for name in (press_name, release_name) if name and not _is_camera_align_command(name)]
+    if external:
+        return "冲突：{0}".format(" / ".join(external)), "error"
+    if press_name:
+        return "已绑定", "ok"
+    return "可用", "ok"
+
+
+def _make_hotkey_command(function_name):
+    return 'python("import camera_align; camera_align.{0}()");'.format(function_name)
+
+
+def _name_command_for_action(command_id, label, function_name):
+    name = "CameraAlign_{0}_Custom_{1}_NameCommand".format(command_id, HOTKEY_VERSION)
+    command = _make_hotkey_command(function_name)
+    try:
+        mc.nameCommand(name, annotation="Camera Align: {0}".format(label), command=command, sourceType="mel")
+    except RuntimeError:
+        pass
+    return name
+
+
+def _bind_configured_hotkey(action_id, item, command_id, label, function_name, skip_conflicts=True):
+    status, level = _hotkey_status(action_id, item)
+    if skip_conflicts and level == "error":
+        return False, status
+    if not item.get("enabled", True) or not item.get("key"):
+        return False, status
+
+    name_command = _name_command_for_action(command_id, label, function_name)
+    _bind_hotkey(
+        item["key"],
+        name_command,
+        alt=item.get("alt", False),
+        ctrl=item.get("ctrl", False),
+        shift=item.get("shift", False),
+    )
+    return True, "已绑定"
+
+
+def _clear_configured_hotkeys(config=None):
+    config = config or load_hotkey_config()
+    for item in config.values():
+        if item.get("key"):
+            _clear_camera_align_hotkey(
+                item["key"],
+                alt=item.get("alt", False),
+                ctrl=item.get("ctrl", False),
+                shift=item.get("shift", False),
+            )
+    return True
+
+
+def _clear_legacy_camera_align_hotkeys():
+    for key in ("q", "w", "e", "r"):
+        _clear_camera_align_hotkey(key, alt=True, ctrl=False, shift=False)
+        _clear_camera_align_hotkey(key, alt=True, ctrl=True, shift=False)
+    return True
+
+
+def _read_hotkey_config_from_ui():
+    config = load_hotkey_config()
+    for action_id, unused_label, unused_command_id, unused_default_key, unused_function_name in HOTKEY_ACTIONS:
+        field = HOTKEY_FIELD_PREFIX + action_id
+        alt_box = HOTKEY_ALT_PREFIX + action_id
+        ctrl_box = HOTKEY_CTRL_PREFIX + action_id
+        shift_box = HOTKEY_SHIFT_PREFIX + action_id
+
+        item = dict(config.get(action_id, {}))
+        if mc.control(field, exists=True):
+            item["key"] = mc.textField(field, q=True, text=True).strip().lower()
+        if mc.control(alt_box, exists=True):
+            item["alt"] = bool(mc.checkBox(alt_box, q=True, value=True))
+        if mc.control(ctrl_box, exists=True):
+            item["ctrl"] = bool(mc.checkBox(ctrl_box, q=True, value=True))
+        if mc.control(shift_box, exists=True):
+            item["shift"] = bool(mc.checkBox(shift_box, q=True, value=True))
+        item["enabled"] = True
+        config[action_id] = item
+    return save_hotkey_config(config)
+
+
+def refresh_hotkey_status_ui():
+    config = load_hotkey_config()
+    combo_counts = {}
+    for action_id in config:
+        combo_id = _hotkey_combo_id(config[action_id])
+        if combo_id[0]:
+            combo_counts[combo_id] = combo_counts.get(combo_id, 0) + 1
+    for action_id, unused_label, unused_command_id, unused_default_key, unused_function_name in HOTKEY_ACTIONS:
+        status_name = HOTKEY_STATUS_PREFIX + action_id
+        if not mc.control(status_name, exists=True):
+            continue
+        status, level = _hotkey_status(action_id, config[action_id])
+        if _hotkey_combo_id(config[action_id])[0] and combo_counts.get(_hotkey_combo_id(config[action_id]), 0) > 1:
+            status, level = "快捷键重复", "error"
+        label = "{0}：{1}".format(_format_hotkey(config[action_id]), status)
+        color_name = "status"
+        if level == "ok":
+            color_name = "success"
+        elif level == "warn":
+            color_name = "warn"
+        elif level == "error":
+            color_name = "danger"
+        try:
+            mc.text(status_name, edit=True, label=label, backgroundColor=_ui_color(color_name))
+        except Exception:
+            mc.text(status_name, edit=True, label=label)
+    return True
+
+
+def apply_hotkeys_from_ui():
+    old_config = load_hotkey_config()
+    _clear_configured_hotkeys(old_config)
+    _clear_legacy_camera_align_hotkeys()
+    _read_hotkey_config_from_ui()
+    result = install_hotkeys(show_dialog=False)
+    refresh_hotkey_status_ui()
+    show_shortcut_hud()
+    if result:
+        _set_status("快捷键已应用。", "ok")
+    else:
+        _set_status("部分快捷键存在冲突，已跳过。", "warn")
+    return result
+
+
+def detect_hotkey_conflicts_from_ui():
+    _read_hotkey_config_from_ui()
+    refresh_hotkey_status_ui()
+    _set_status("快捷键冲突状态已刷新。", "ok")
+    return True
+
+
+def restore_default_hotkeys_from_ui():
+    save_hotkey_config(_default_hotkey_config())
+    config = load_hotkey_config()
+    for action_id, unused_label, unused_command_id, unused_default_key, unused_function_name in HOTKEY_ACTIONS:
+        item = config[action_id]
+        field = HOTKEY_FIELD_PREFIX + action_id
+        alt_box = HOTKEY_ALT_PREFIX + action_id
+        ctrl_box = HOTKEY_CTRL_PREFIX + action_id
+        shift_box = HOTKEY_SHIFT_PREFIX + action_id
+        if mc.control(field, exists=True):
+            mc.textField(field, edit=True, text=item["key"].upper())
+        if mc.control(alt_box, exists=True):
+            mc.checkBox(alt_box, edit=True, value=item["alt"])
+        if mc.control(ctrl_box, exists=True):
+            mc.checkBox(ctrl_box, edit=True, value=item["ctrl"])
+        if mc.control(shift_box, exists=True):
+            mc.checkBox(shift_box, edit=True, value=item["shift"])
+    refresh_hotkey_status_ui()
+    _set_status("快捷键已恢复默认，可点击应用写入 Maya。", "ok")
+    return True
+
+
+def install_hotkeys(show_dialog=True):
     active_set = _ensure_hotkey_set()
-    for command_id, key, label, mel_command in commands:
-        for combo_name, mods in combos:
-            nc = _name_command(command_id, combo_name, label, mel_command)
-            _bind_hotkey(key, nc, **mods)
+    config = load_hotkey_config()
+    _clear_legacy_camera_align_hotkeys()
+    bound = []
+    skipped = []
+    used_combos = set()
+    for action_id, label, command_id, unused_default_key, function_name in HOTKEY_ACTIONS:
+        combo_id = _hotkey_combo_id(config[action_id])
+        if combo_id[0] and combo_id in used_combos:
+            skipped.append("{0}：快捷键重复".format(label))
+            continue
+        if combo_id[0]:
+            used_combos.add(combo_id)
+        ok, message = _bind_configured_hotkey(action_id, config[action_id], command_id, label, function_name, skip_conflicts=True)
+        if ok:
+            bound.append("{0} {1}".format(_format_hotkey(config[action_id]), label))
+        else:
+            skipped.append("{0}：{1}".format(label, message))
 
     try:
         mc.hotkey(autoSave=True)
@@ -897,15 +1264,19 @@ def install_hotkeys(show_dialog=True):
         pass
 
     if show_dialog:
-        message = "快捷键已启用。\n\nAlt+Q/W/E/R：对齐 / 顺转 / 逆转 / 恢复\nCtrl+Alt+Q/W/E/R：备用组合\n\n当前 Hotkey Set：{0}".format(active_set)
+        message = "快捷键已处理。\n\n当前 Hotkey Set：{0}".format(active_set)
+        if bound:
+            message += "\n\n已绑定：\n{0}".format("\n".join(bound))
+        if skipped:
+            message += "\n\n已跳过：\n{0}".format("\n".join(skipped))
         mc.confirmDialog(title="Camera Align", message=message, button=["OK"])
-    return True
+    return len(skipped) == 0
 
 
 def remove_reserved_hotkeys():
-    for key in ("q", "w", "e", "r"):
-        _clear_hotkey(key, alt=True, ctrl=False, shift=False)
-        _clear_hotkey(key, alt=True, ctrl=True, shift=False)
+    config = load_hotkey_config()
+    _clear_configured_hotkeys(config)
+    _clear_legacy_camera_align_hotkeys()
     try:
         mc.hotkey(autoSave=True)
     except Exception:
@@ -914,6 +1285,8 @@ def remove_reserved_hotkeys():
         mc.savePrefs(hotkeys=True)
     except Exception:
         pass
+    refresh_hotkey_status_ui()
+    show_shortcut_hud()
     _set_status("Camera Align 快捷键已清理。", "ok")
     return True
 

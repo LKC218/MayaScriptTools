@@ -79,7 +79,16 @@ Shelf 按钮信息：
 
 - 按钮名称：`CamAlign`
 - 功能：打开 `Camera Align` UI 窗口。
+- 图标：`camera_align_face_normal_icon.png`
+- 图标语义：相机 + 多边形面 + 法线对齐箭头，表达“将相机对齐到选中面的法线方向”。
 - 若按钮被删除，可在 UI 中点击“创建 / 更新 Shelf”重新生成。
+
+图标实现策略：
+
+- 图标只用于 Shelf / 工具栏按钮，不给普通 UI 面板按钮增加图标。
+- 图标以 PNG base64 形式内嵌在一键安装脚本中。
+- 安装 / 创建 Shelf 时写入 Maya 用户图标目录：`cmds.internalVar(userBitmapsDir=True)`。
+- 若图标写入失败，回退到 Maya 默认 `commandButton.png`，并保留 `imageOverlayLabel="CA"` 作为辅助识别。
 
 Shelf 按钮执行逻辑：
 
