@@ -96,6 +96,11 @@ class _AlignState(object):
         self.model_panel = None
         self.grid_visible_before_align = None
 
+        self.rotate_up_start = None
+        self.rotate_up_target = None
+        self.rotate_step_index = 0
+        self.is_rotating = False
+
 
 _STATE = _AlignState()
 
@@ -142,6 +147,7 @@ def _write_shelf_icon():
 class Camera_Align(object):
     TIMER_INTERVAL = 0.005
     INTERP_STEPS = 100
+    ROTATE_INTERP_STEPS = 40
     DEFAULT_ROTATE_STEP = 22.5
 
     def __init__(self):
@@ -377,6 +383,23 @@ class Camera_Align(object):
 
         self.i += 1
 
+    def _rotate_cam_step(self, *args, **kwargs):
+        factor = _STATE.rotate_step_index / float(self.ROTATE_INTERP_STEPS)
+        up_quat = om2.MQuaternion(_STATE.rotate_up_start, _STATE.rotate_up_target, factor=factor)
+        current_up = _STATE.rotate_up_start.rotateBy(up_quat)
+
+        self.camera.set(_STATE.pos_new, _STATE.dir_view_new, current_up, _STATE.hview, _STATE.asp_rat)
+        _STATE.cam = self.camera
+
+        if _STATE.rotate_step_index >= self.ROTATE_INTERP_STEPS:
+            self._clear_timer()
+            _STATE.cam_dir_up_new = _STATE.rotate_up_target
+            _STATE.is_rotating = False
+            self.make_manip_screen_space()
+            return
+
+        _STATE.rotate_step_index += 1
+
     def rotate_cam(self, angle=22.5):
         if not _STATE.is_aligned or _STATE.cam is None:
             _display_warning("当前还没有进入对齐模式。")
@@ -385,6 +408,11 @@ class Camera_Align(object):
         if not self._camera_bool(_STATE.cam, "isOrtho"):
             _display_warning("当前相机不是正交模式，无法旋转。")
             return None
+
+        if _STATE.is_rotating:
+            self._clear_timer()
+            _STATE.cam_dir_up_new = _STATE.rotate_up_target
+            _STATE.is_rotating = False
 
         if _STATE.dir_view_new is None:
             _STATE.dir_view_new = _STATE.cam.viewDirection(space=om2.MSpace.kWorld)
@@ -399,10 +427,18 @@ class Camera_Align(object):
         new_dir_up = new_dir_up.rotateBy(om2.MEulerRotation(0, 0, angle_as_rad)).rotateBy(quat_a.inverse())
 
         _STATE.pos_new = _STATE.cam.eyePoint(space=om2.MSpace.kWorld)
-        _STATE.cam_dir_up_new = new_dir_up
-        _STATE.cam.set(_STATE.pos_new, _STATE.dir_view_new, _STATE.cam_dir_up_new, _STATE.hview, _STATE.asp_rat)
-        self.make_manip_screen_space()
-        _display_info("已旋转 {0}°".format(angle))
+
+        _STATE.rotate_up_start = om2.MVector(_STATE.cam_dir_up_new)
+        _STATE.rotate_up_target = new_dir_up
+        _STATE.rotate_step_index = 0
+        _STATE.is_rotating = True
+
+        self.camera = self.get_presp_cam()
+        self._clear_timer()
+        self.timer = om2.MTimerMessage.addTimerCallback(self.TIMER_INTERVAL, self._rotate_cam_step)
+        _STATE.timer_callback_id = self.timer
+
+        _display_info("正在旋转 {0}°...".format(angle))
         return True
 
     def add_remove_script_job(self, rem=False):
@@ -418,6 +454,7 @@ class Camera_Align(object):
 
         self.add_remove_script_job(rem=True)
         self._clear_timer()
+        _STATE.is_rotating = False
         camera = self.get_presp_cam()
 
         try:
@@ -484,15 +521,21 @@ def align_camera_to_selected_polygon():
     return Camera_Align().set_align_mode()
 
 
-def rotate_aligned_camera(angle=22.5):
+def rotate_aligned_camera(angle=None):
+    if angle is None:
+        angle = get_rotate_step_from_ui()
     return Camera_Align().rotate_cam(angle)
 
 
-def rotate_aligned_camera_clockwise(step=22.5):
+def rotate_aligned_camera_clockwise(step=None):
+    if step is None:
+        step = get_rotate_step_from_ui()
     return Camera_Align().rotate_cam(step)
 
 
-def rotate_aligned_camera_counter_clockwise(step=22.5):
+def rotate_aligned_camera_counter_clockwise(step=None):
+    if step is None:
+        step = get_rotate_step_from_ui()
     return Camera_Align().rotate_cam(-step)
 
 
@@ -1339,44 +1382,23 @@ def install():
     module_path, backup_path = _write_camera_align()
     module = _import_camera_align()
 
-    shelf_status = "Shelf 按钮：已创建 / 更新"
-    try:
-        module.create_or_update_shelf_button()
-    except Exception as exc:
-        shelf_status = "Shelf 按钮：创建失败，可在 UI 内重试（{0}）".format(exc)
-
-    try:
-        module.install_hotkeys(show_dialog=False)
-    except Exception as exc:
-        raise RuntimeError("快捷键安装失败：{0}".format(exc))
-
     try:
         module.show_camera_align_ui()
     except Exception as exc:
         print("Camera Align: UI 打开失败：{0}".format(exc))
-        try:
-            module.show_shortcut_hud()
-        except Exception:
-            pass
 
     lines = [
-        "Camera Align 安装完成。",
+        "Camera Align 已加载。",
         "",
-        "UI 入口：Shelf 按钮 CamAlign，可拖拽停靠到 Maya 界面。",
+        "UI 窗口已打开。",
         "面板分组：主要操作 / 旋转设置 / 视窗提示 / 工具入口均可折叠。",
-        "视窗提示：3D 视窗会显示快捷键 HUD。",
-        "快捷键：Alt+Q / W / E / R",
-        "备用键：Ctrl+Alt+Q / W / E / R",
-        shelf_status,
+        "",
+        "如需创建 Shelf 按钮或设置快捷键，请使用 UI 内【工具入口】和【快捷键设置】。",
         "",
         "已写入：{0}".format(module_path),
     ]
     if backup_path:
         lines.append("旧文件备份：{0}".format(backup_path))
-    lines.extend([
-        "",
-        "提示：执行后先点击 Maya 视口，再使用快捷键。",
-    ])
 
     message = "\n".join(lines)
     print(message)
