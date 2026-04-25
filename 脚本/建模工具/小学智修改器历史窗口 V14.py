@@ -1,4 +1,32 @@
 # -*- coding: utf-8 -*-
+# ====== Maya 工具栏 UTF-8 编码自修复 ======
+# 当脚本通过 Maya 工具栏（MEL桥接）在 Windows 下启动时，
+# Python 的 open() 会默认使用系统 GBK 编码读取本文件，
+# 导致所有中文字符串变成乱码。以下代码块在程序入口处
+# 自动检测并修复该问题，无需修改工具栏命令。
+import sys as _sys, os as _os, io as _io
+def _fix_utf8_encoding():
+    # 用 Unicode 转义写测试字符，不受文件编码影响
+    _marker = "\u5c0f\u5b66\u667a"  # 「小学智」
+    _test = "小学智"
+    if _test == _marker:
+        return  # 编码正常，无需修复
+    # 检测到 GBK 乱码环境，以 UTF-8 重新执行本文件
+    try:
+        import inspect as _inspect
+        _file = _inspect.getfile(_fix_utf8_encoding)
+    except Exception:
+        _file = None
+    if not _file:
+        # 回退：尝试从 sys.argv 或 __file__ 获取路径
+        _file = globals().get('__file__', None)
+    if _file and _os.path.isfile(_file):
+        _src = _io.open(_file, encoding='utf-8').read()
+        exec(compile(_src, _file, 'exec'), {'__file__': _file, '__name__': '__main__'})
+        raise SystemExit(0)  # 终止当前乱码上下文
+_fix_utf8_encoding()
+del _fix_utf8_encoding, _sys, _os, _io
+# =============================================
 import maya.cmds as cmds
 
 class ModifierStackWindow(object):
