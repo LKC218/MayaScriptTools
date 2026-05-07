@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+*.log
+*.tmp
+*.bak
+*.ma~
+*.mb~
+
+.mayaSwatches/
+.mayaTemp/
