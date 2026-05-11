@@ -10,7 +10,7 @@
 
 ```python
 import runpy
-runpy.run_path(r"H:\cjiaoben\MayaScriptTools\glb工具maya\install.py", run_name="__main__")
+runpy.run_path(r"E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\install.py", run_name="__main__")
 ```
 
 安装完成后，当前 Shelf 会出现 `GLB` 按钮。

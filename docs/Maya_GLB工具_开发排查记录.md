@@ -16,10 +16,10 @@
 
 关键文件：
 
-- `glb工具maya/maya_glb_tool.py`：UI 和主入口
-- `glb工具maya/maya_glb_native.py`：Maya 原生 GLB 核心逻辑
-- `glb工具maya/blender_glb_bridge.py`：Blender 兜底桥
-- `glb工具maya/install.py`：安装脚本
+- `脚本/建模工具/glb工具maya/maya_glb_tool.py`：UI 和主入口
+- `脚本/建模工具/glb工具maya/maya_glb_native.py`：Maya 原生 GLB 核心逻辑
+- `脚本/建模工具/glb工具maya/blender_glb_bridge.py`：Blender 兜底桥
+- `脚本/建模工具/glb工具maya/install.py`：安装脚本
 
 ## 已实现能力摘要
 
@@ -162,7 +162,7 @@ glTF matrix 是列主序，Maya API 这里按行主序传值。
 
 ## 后续修改注意点
 
-1. 优先修改 `glb工具maya/maya_glb_native.py`
+1. 优先修改 `脚本/建模工具/glb工具maya/maya_glb_native.py`
 2. 不要把 Blender 再抬回主路径
 3. 修改 mesh 逻辑时，UV、normal、color、material 必须一起看
 4. 修改 matrix 时要记住 glTF 列主序与 Maya 行主序差异
@@ -173,7 +173,7 @@ glTF matrix 是列主序，Maya API 这里按行主序传值。
 每次修改后至少跑：
 
 ```powershell
-& "D:\Steam\steamapps\common\Blender\blender.exe" --background --python-expr "import py_compile; files=[r'H:\cjiaoben\MayaScriptTools\glb工具maya\maya_glb_native.py', r'H:\cjiaoben\MayaScriptTools\glb工具maya\maya_glb_tool.py', r'H:\cjiaoben\MayaScriptTools\glb工具maya\blender_glb_bridge.py', r'H:\cjiaoben\MayaScriptTools\glb工具maya\install.py']; [py_compile.compile(f, doraise=True) for f in files]; print('PY_COMPILE_OK')"
+& "D:\Steam\steamapps\common\Blender\blender.exe" --background --python-expr "import py_compile; files=[r'E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\maya_glb_native.py', r'E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\maya_glb_tool.py', r'E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\blender_glb_bridge.py', r'E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\install.py']; [py_compile.compile(f, doraise=True) for f in files]; print('PY_COMPILE_OK')"
 ```
 
 Maya 内建议按顺序测试：
@@ -190,5 +190,5 @@ Maya 内建议按顺序测试：
 
 ## 相关文档
 
-- 发布说明：[docs/Maya_GLB工具_v1.0.0_使用与发布说明.md](/h:/cjiaoben/MayaScriptTools/docs/Maya_GLB工具_v1.0.0_使用与发布说明.md:1)
-- 工具说明：[glb工具maya/README.md](/h:/cjiaoben/MayaScriptTools/glb工具maya/README.md:1)
+- 发布说明：[docs/Maya_GLB工具_v1.0.0_使用与发布说明.md](/E:/kc/标准/Maya脚本工具/docs/Maya_GLB工具_v1.0.0_使用与发布说明.md:1)
+- 工具说明：[脚本/建模工具/glb工具maya/README.md](/E:/kc/标准/Maya脚本工具/脚本/建模工具/glb工具maya/README.md:1)

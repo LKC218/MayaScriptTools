@@ -4,7 +4,7 @@ from __future__ import annotations
 import sys
 
 
-TOOL_DIR = r"H:\cjiaoben\MayaScriptTools\glb工具maya"
+TOOL_DIR = r"E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya"
 if TOOL_DIR not in sys.path:
     sys.path.insert(0, TOOL_DIR)
 

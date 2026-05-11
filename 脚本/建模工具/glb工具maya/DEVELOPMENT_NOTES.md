@@ -172,7 +172,7 @@ Maya Script Editor 里使用 `exec(open(...).read())` 时，`__file__` 可能继
 
 ```python
 import runpy
-runpy.run_path(r"H:\cjiaoben\MayaScriptTools\glb工具maya\install.py", run_name="__main__")
+runpy.run_path(r"E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\install.py", run_name="__main__")
 ```
 
 ### 3. 桌面 Blender 不是 exe
@@ -290,7 +290,7 @@ glTF matrix 是列主序，Maya Python API 使用行主序值。
 2. 每次修改后至少运行：
 
 ```powershell
-& "D:\Steam\steamapps\common\Blender\blender.exe" --background --python-expr "import py_compile; files=[r'H:\cjiaoben\MayaScriptTools\glb工具maya\maya_glb_native.py', r'H:\cjiaoben\MayaScriptTools\glb工具maya\maya_glb_tool.py', r'H:\cjiaoben\MayaScriptTools\glb工具maya\blender_glb_bridge.py', r'H:\cjiaoben\MayaScriptTools\glb工具maya\install.py']; [py_compile.compile(f, doraise=True) for f in files]; print('PY_COMPILE_OK')"
+& "D:\Steam\steamapps\common\Blender\blender.exe" --background --python-expr "import py_compile; files=[r'E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\maya_glb_native.py', r'E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\maya_glb_tool.py', r'E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\blender_glb_bridge.py', r'E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\install.py']; [py_compile.compile(f, doraise=True) for f in files]; print('PY_COMPILE_OK')"
 ```
 
 3. Blender 启动时可能输出本机 startup 脚本警告，不一定是本工具错误。重点看是否出现 `PY_COMPILE_OK`。
@@ -333,7 +333,7 @@ glTF matrix 是列主序，Maya Python API 使用行主序值。
 import sys
 import importlib
 
-tool_dir = r"H:\cjiaoben\MayaScriptTools\glb工具maya"
+tool_dir = r"E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya"
 if tool_dir not in sys.path:
     sys.path.insert(0, tool_dir)
 
@@ -348,5 +348,5 @@ maya_glb_tool.show_ui()
 
 ```python
 import runpy
-runpy.run_path(r"H:\cjiaoben\MayaScriptTools\glb工具maya\install.py", run_name="__main__")
+runpy.run_path(r"E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\install.py", run_name="__main__")
 ```

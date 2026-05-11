@@ -19,7 +19,7 @@
 
 ```python
 import runpy
-runpy.run_path(r"H:\cjiaoben\MayaScriptTools\glb工具maya\install.py", run_name="__main__")
+runpy.run_path(r"E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya\install.py", run_name="__main__")
 ```
 
 安装完成后，当前 Shelf 会出现 `GLB` 按钮。
@@ -32,7 +32,7 @@ runpy.run_path(r"H:\cjiaoben\MayaScriptTools\glb工具maya\install.py", run_name
 import sys
 import importlib
 
-tool_dir = r"H:\cjiaoben\MayaScriptTools\glb工具maya"
+tool_dir = r"E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya"
 if tool_dir not in sys.path:
     sys.path.insert(0, tool_dir)
 
@@ -93,6 +93,6 @@ maya_glb_tool.show_ui()
 
 ## 相关文件
 
-- 工具入口：[glb工具maya/README.md](/h:/cjiaoben/MayaScriptTools/glb工具maya/README.md:1)
-- 开发排查：[docs/Maya_GLB工具_开发排查记录.md](/h:/cjiaoben/MayaScriptTools/docs/Maya_GLB工具_开发排查记录.md:1)
-- 工具目录：[glb工具maya](/h:/cjiaoben/MayaScriptTools/glb工具maya)
+- 工具入口：[脚本/建模工具/glb工具maya/README.md](/E:/kc/标准/Maya脚本工具/脚本/建模工具/glb工具maya/README.md:1)
+- 开发排查：[docs/Maya_GLB工具_开发排查记录.md](/E:/kc/标准/Maya脚本工具/docs/Maya_GLB工具_开发排查记录.md:1)
+- 工具目录：[脚本/建模工具/glb工具maya](/E:/kc/标准/Maya脚本工具/脚本/建模工具/glb工具maya)

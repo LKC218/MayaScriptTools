@@ -3,7 +3,7 @@
 > 适用范围：Maya 2018 / 2022 及兼容版本  
 > 插件目标：辅助显示、检测和修复多边形模型穿插问题。  
 > 当前版本：`v1.1`  
-> 当前脚本：`脚本/建模工具/intersectionSolver.py`  
+> 当前脚本：`脚本/建模工具/intersectionSolver/intersectionSolver.py`
 > 记录日期：2026-04-25  
 
 ---
@@ -21,7 +21,7 @@
 当前脚本已从项目根目录移动到建模工具目录：
 
 ```text
-E:\kc\标准\Maya脚本工具\脚本\建模工具\intersectionSolver.py
+E:\kc\标准\Maya脚本工具\脚本\建模工具\intersectionSolver\intersectionSolver.py
 ```
 
 整理原则：
@@ -488,7 +488,7 @@ flushCBB()
 已执行的本地验证：
 
 ```text
-python -m py_compile 脚本/建模工具/intersectionSolver.py
+python -m py_compile 脚本/建模工具/intersectionSolver/intersectionSolver.py
 ```
 
 结果：
@@ -517,4 +517,3 @@ python -m py_compile 脚本/建模工具/intersectionSolver.py
 - 大规模重构核心布尔修复算法。
 - 改动原始节点命名和函数名。
 - 将 UI 和核心逻辑完全拆分，除非后续确认要长期维护该插件。
-

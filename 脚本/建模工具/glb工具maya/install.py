@@ -17,7 +17,7 @@ TOOL_FILES = (
     "blender_glb_bridge.py",
 )
 
-DEFAULT_SOURCE_DIR = r"H:\cjiaoben\MayaScriptTools\glb工具maya"
+DEFAULT_SOURCE_DIR = r"E:\kc\标准\Maya脚本工具\脚本\建模工具\glb工具maya"
 
 
 def _source_dir():
