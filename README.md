@@ -5,6 +5,7 @@ Maya Python 脚本工具集合。
 ## 当前内容
 
 - `脚本/相机工具/camera_align_one_click_standalone_final.py`：相机对齐相关工具脚本。
+- `脚本/大纲工具/outlinerX_v1.11.py`：可停靠的 Maya 大纲管理、层级整理和材质快速指定工具。
 - `脚本/建模工具/intersectionSolver/intersectionSolver.py`：模型穿插检测与辅助修复工具。
 - `脚本/建模工具/小学智修改器历史窗口V14/小学智修改器历史窗口 V14.py`：修改器历史窗口旧版本脚本。
 - `脚本/建模工具/小学智修改器历史窗口16/小学智修改器历史窗口16.py`：修改器历史窗口当前版本脚本。
